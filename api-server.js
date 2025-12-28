@@ -160,10 +160,10 @@ function convertToDBML(dataTypes) {
   const relationships = [];
   
   for (const [tableName, tableInfo] of Object.entries(dataTypes)) {
-    dbml += `Table ${tableName} {\n`;
-    dbml += `  id text [primary key]\n`;
-    dbml += `  Created_Date timestamp\n`;
-    dbml += `  Modified_Date timestamp\n`;
+    dbml += 'Table ' + tableName + ' {\n';
+    dbml += '  id text [primary key]\n';
+    dbml += '  Created_Date timestamp\n';
+    dbml += '  Modified_Date timestamp\n';
     
     const fields = tableInfo['%f3'] || {};
     
@@ -176,16 +176,15 @@ function convertToDBML(dataTypes) {
       if (fieldType.startsWith('custom.')) {
         const relatedType = fieldType.replace('custom.', '');
         const cleanFieldName = fieldName.replace(/_custom_.*$/, '_id');
-        dbml += `  ${cleanFieldName} text\n`;
-        relationships.push(`Ref: ${tableName}.${cleanFieldName} > ${relatedType}.id`);
+        dbml += '  ' + cleanFieldName + ' text\n';
+        relationships.push('Ref: ' + tableName + '.' + cleanFieldName + ' > ' + relatedType + '.id');
         
       } else if (fieldType === 'user') {
         const cleanFieldName = fieldName.replace(/_user$/, '_user_id');
-        dbml += `  ${cleanFieldName} text\n`;
-        relationships.push(`Ref: ${tableName}.${cleanFieldName} > user.id`);
+        dbml += '  ' + cleanFieldName + ' text\n';
+        relationships.push('Ref: ' + tableName + '.' + cleanFieldName + ' > user.id');
         
       } else if (fieldType.startsWith('list.custom.')) {
-        // Skip list relationships for now
         continue;
         
       } else {
@@ -194,13 +193,19 @@ function convertToDBML(dataTypes) {
         else if (fieldType === 'date') dbType = 'timestamp';
         else if (fieldType === 'boolean') dbType = 'boolean';
         
-        dbml += `  ${fieldName} ${dbType}\n`;
+        dbml += '  ' + fieldName + ' ' + dbType + '\n';
       }
     }
     
-    dbml += `}\n\n`;
+    dbml += '}\n\n';
   }
   
+  relationships.forEach(function(rel) {
+    dbml += rel + '\n';
+  });
+  
+  return dbml;
+}
   // Add relationships at the end
   relationships.forEach(rel => {
     dbml += rel + '\n';
