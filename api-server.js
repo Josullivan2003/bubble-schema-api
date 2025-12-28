@@ -5,37 +5,35 @@ const chromium = require('@sparticuz/chromium');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Helper function to wait
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-// API endpoint: GET /api/schema/:appNameOrUrl?format=dbml
-app.get('/api/schema/:input', async (req, res) => {
+app.get('/api/schema/:input', async function(req, res) {
   const input = req.params.input;
-  const format = req.query.format || 'dbml'; // dbml or mermaid
+  const format = req.query.format || 'dbml';
   
-  console.log(`📥 Request: ${input} (format: ${format})`);
+  console.log('Request: ' + input + ' (format: ' + format + ')');
   
   try {
-    // Determine URL
     let appUrl;
     if (input.startsWith('http')) {
       appUrl = decodeURIComponent(input);
     } else if (input.includes('.')) {
-      appUrl = `https://${input}`;
+      appUrl = 'https://' + input;
     } else {
-      appUrl = `https://${input}.bubbleapps.io`;
+      appUrl = 'https://' + input + '.bubbleapps.io';
     }
     
-    console.log(`🌐 Visiting: ${appUrl}`);
+    console.log('Visiting: ' + appUrl);
     
-    // Extract schema
-const browser = await puppeteer.launch({
-     args: chromium.args,
-     defaultViewport: chromium.defaultViewport,
-     executablePath: await chromium.executablePath(),
-     headless: chromium.headless,
-     ignoreHTTPSErrors: true
-   });
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true
+    });
     
     const page = await browser.newPage();
     
@@ -46,7 +44,7 @@ const browser = await puppeteer.launch({
     
     await wait(3000);
     
-    const schemaData = await page.evaluate(() => {
+    const schemaData = await page.evaluate(function() {
       if (typeof app === 'undefined' || !app.user_types) {
         return null;
       }
@@ -64,9 +62,8 @@ const browser = await puppeteer.launch({
     
     const dataTypes = JSON.parse(schemaData);
     
-    console.log(`✅ Found ${Object.keys(dataTypes).length} data types`);
+    console.log('Found ' + Object.keys(dataTypes).length + ' data types');
     
-    // Convert to requested format
     let output;
     let contentType;
     
@@ -81,163 +78,140 @@ const browser = await puppeteer.launch({
       contentType = 'text/plain; charset=utf-8';
     }
     
-    // Ensure proper line breaks
     res.set('Content-Type', contentType);
     res.set('Cache-Control', 'no-cache');
     res.send(output);
+    
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ 
+      error: error.message 
+    });
+  }
+});
 
-// Health check
-app.get('/health', (req, res) => {
+app.get('/health', function(req, res) {
   res.json({ status: 'ok' });
 });
 
-// Home page
-app.get('/', (req, res) => {
-  res.send(`
-    <html>
-      <head>
-        <title>Bubble Schema API</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-          }
-          code {
-            background: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
-          }
-          pre {
-            background: #f4f4f4;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-          }
-        </style>
-      </head>
-      <body>
-        <h1>🎨 Bubble Schema Extractor API</h1>
-        <p>Extract database schemas from Bubble apps</p>
-        
-        <h2>Endpoints</h2>
-        
-        <h3>GET /api/schema/:appName</h3>
-        <p>Extract schema from a Bubble app</p>
-        
-        <h4>Parameters:</h4>
-        <ul>
-          <li><code>appName</code> - Bubble app name or full URL</li>
-          <li><code>format</code> (query) - Output format: <code>dbml</code>, <code>mermaid</code>, or <code>json</code></li>
-        </ul>
-        
-        <h4>Examples:</h4>
-        <pre>GET /api/schema/postcard</pre>
-        <pre>GET /api/schema/postcard?format=dbml</pre>
-        <pre>GET /api/schema/postcard?format=mermaid</pre>
-        <pre>GET /api/schema/postcard?format=json</pre>
-        <pre>GET /api/schema/myapp.com?format=dbml</pre>
-        
-        <h4>Try it:</h4>
-        <p><a href="/api/schema/postcard?format=dbml" target="_blank">Get postcard schema (DBML)</a></p>
-        <p><a href="/api/schema/postcard?format=json" target="_blank">Get postcard schema (JSON)</a></p>
-      </body>
-    </html>
-  `);
+app.get('/', function(req, res) {
+  res.send('<html><head><title>Bubble Schema API</title></head><body><h1>Bubble Schema Extractor API</h1><p>Extract database schemas from Bubble apps</p><h2>Endpoints</h2><h3>GET /api/schema/:appName</h3><p>Extract schema from a Bubble app</p><h4>Parameters:</h4><ul><li>appName - Bubble app name or full URL</li><li>format (query) - Output format: dbml, mermaid, or json</li></ul><h4>Examples:</h4><pre>GET /api/schema/postcard</pre><pre>GET /api/schema/postcard?format=dbml</pre><pre>GET /api/schema/postcard?format=mermaid</pre><pre>GET /api/schema/postcard?format=json</pre></body></html>');
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 API running on port ${PORT}`);
-  console.log(`📡 http://localhost:${PORT}`);
-  console.log(`📖 API docs: http://localhost:${PORT}`);
+app.listen(PORT, function() {
+  console.log('API running on port ' + PORT);
+  console.log('http://localhost:' + PORT);
 });
 
-// Convert to DBML
 function convertToDBML(dataTypes) {
   let dbml = '';
   const relationships = [];
   
-  for (const [tableName, tableInfo] of Object.entries(dataTypes)) {
-    dbml += 'Table ' + tableName + ' {\n';
-    dbml += '  id text [primary key]\n';
-    dbml += '  Created_Date timestamp\n';
-    dbml += '  Modified_Date timestamp\n';
+  const tables = Object.keys(dataTypes);
+  
+  for (let i = 0; i < tables.length; i++) {
+    const tableName = tables[i];
+    const tableInfo = dataTypes[tableName];
+    
+    dbml = dbml + 'Table ' + tableName + ' {\n';
+    dbml = dbml + '  id text [primary key]\n';
+    dbml = dbml + '  Created_Date timestamp\n';
+    dbml = dbml + '  Modified_Date timestamp\n';
     
     const fields = tableInfo['%f3'] || {};
+    const fieldNames = Object.keys(fields);
     
-    for (const [fieldName, fieldInfo] of Object.entries(fields)) {
-      if (fieldInfo['%del']) continue;
+    for (let j = 0; j < fieldNames.length; j++) {
+      const fieldName = fieldNames[j];
+      const fieldInfo = fields[fieldName];
+      
+      if (fieldInfo['%del']) {
+        continue;
+      }
       
       const fieldType = fieldInfo['%v'];
-      if (!fieldType) continue;
+      if (!fieldType) {
+        continue;
+      }
       
-      if (fieldType.startsWith('custom.')) {
+      if (fieldType.indexOf('custom.') === 0) {
         const relatedType = fieldType.replace('custom.', '');
         const cleanFieldName = fieldName.replace(/_custom_.*$/, '_id');
-        dbml += '  ' + cleanFieldName + ' text\n';
+        dbml = dbml + '  ' + cleanFieldName + ' text\n';
         relationships.push('Ref: ' + tableName + '.' + cleanFieldName + ' > ' + relatedType + '.id');
         
       } else if (fieldType === 'user') {
-        const cleanFieldName = fieldName.replace(/_user$/, '_user_id');
-        dbml += '  ' + cleanFieldName + ' text\n';
+        const cleanFieldName = fieldName + '_id';
+        dbml = dbml + '  ' + cleanFieldName + ' text\n';
         relationships.push('Ref: ' + tableName + '.' + cleanFieldName + ' > user.id');
         
-      } else if (fieldType.startsWith('list.custom.')) {
+      } else if (fieldType.indexOf('list.') === 0) {
         continue;
         
       } else {
         let dbType = 'text';
-        if (fieldType === 'number') dbType = 'int';
-        else if (fieldType === 'date') dbType = 'timestamp';
-        else if (fieldType === 'boolean') dbType = 'boolean';
+        if (fieldType === 'number') {
+          dbType = 'int';
+        } else if (fieldType === 'date') {
+          dbType = 'timestamp';
+        } else if (fieldType === 'boolean') {
+          dbType = 'boolean';
+        }
         
-        dbml += '  ' + fieldName + ' ' + dbType + '\n';
+        dbml = dbml + '  ' + fieldName + ' ' + dbType + '\n';
       }
     }
     
-    dbml += '}\n\n';
+    dbml = dbml + '}\n\n';
   }
   
-  relationships.forEach(function(rel) {
-    dbml += rel + '\n';
-  });
-  
-  return dbml;
-}
-  // Add relationships at the end
-  relationships.forEach(rel => {
-    dbml += rel + '\n';
-  });
+  for (let k = 0; k < relationships.length; k++) {
+    dbml = dbml + relationships[k] + '\n';
+  }
   
   return dbml;
 }
 
-// Convert to Mermaid
 function convertToMermaid(dataTypes) {
   let mermaid = 'erDiagram\n';
   
-  for (const [tableName, tableInfo] of Object.entries(dataTypes)) {
-    mermaid += `  ${tableName} {\n`;
+  const tables = Object.keys(dataTypes);
+  
+  for (let i = 0; i < tables.length; i++) {
+    const tableName = tables[i];
+    const tableInfo = dataTypes[tableName];
+    
+    mermaid = mermaid + '  ' + tableName + ' {\n';
     
     const fields = tableInfo['%f3'] || {};
+    const fieldNames = Object.keys(fields);
     
-    for (const [fieldName, fieldInfo] of Object.entries(fields)) {
-      if (fieldInfo['%del']) continue;
+    for (let j = 0; j < fieldNames.length; j++) {
+      const fieldName = fieldNames[j];
+      const fieldInfo = fields[fieldName];
+      
+      if (fieldInfo['%del']) {
+        continue;
+      }
       
       const fieldType = fieldInfo['%v'];
-      if (!fieldType) continue;
+      if (!fieldType) {
+        continue;
+      }
       
       let dbType = 'string';
-      if (fieldType === 'number') dbType = 'int';
-      else if (fieldType === 'date') dbType = 'date';
-      else if (fieldType === 'boolean') dbType = 'bool';
+      if (fieldType === 'number') {
+        dbType = 'int';
+      } else if (fieldType === 'date') {
+        dbType = 'date';
+      } else if (fieldType === 'boolean') {
+        dbType = 'bool';
+      }
       
-      mermaid += `    ${dbType} ${fieldName}\n`;
+      mermaid = mermaid + '    ' + dbType + ' ' + fieldName + '\n';
     }
     
-    mermaid += `  }\n`;
+    mermaid = mermaid + '  }\n';
   }
   
   return mermaid;
