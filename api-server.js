@@ -156,11 +156,12 @@ app.listen(PORT, () => {
 
 // Convert to DBML
 function convertToDBML(dataTypes) {
-  let dbml = '// Bubble App Database Schema\n\n';
+  let dbml = '';
+  const relationships = [];
   
   for (const [tableName, tableInfo] of Object.entries(dataTypes)) {
     dbml += `Table ${tableName} {\n`;
-    dbml += `  _id text [pk]\n`;
+    dbml += `  id text [primary key]\n`;
     dbml += `  Created_Date timestamp\n`;
     dbml += `  Modified_Date timestamp\n`;
     
@@ -174,12 +175,22 @@ function convertToDBML(dataTypes) {
       
       if (fieldType.startsWith('custom.')) {
         const relatedType = fieldType.replace('custom.', '');
-        dbml += `  ${fieldName} text [ref: > ${relatedType}._id]\n`;
+        const cleanFieldName = fieldName.replace(/_custom_.*$/, '_id');
+        dbml += `  ${cleanFieldName} text\n`;
+        relationships.push(`Ref: ${tableName}.${cleanFieldName} > ${relatedType}.id`);
+        
       } else if (fieldType === 'user') {
-        dbml += `  ${fieldName} text [ref: > user._id]\n`;
+        const cleanFieldName = fieldName.replace(/_user$/, '_user_id');
+        dbml += `  ${cleanFieldName} text\n`;
+        relationships.push(`Ref: ${tableName}.${cleanFieldName} > user.id`);
+        
+      } else if (fieldType.startsWith('list.custom.')) {
+        // Skip list relationships for now
+        continue;
+        
       } else {
         let dbType = 'text';
-        if (fieldType === 'number') dbType = 'numeric';
+        if (fieldType === 'number') dbType = 'int';
         else if (fieldType === 'date') dbType = 'timestamp';
         else if (fieldType === 'boolean') dbType = 'boolean';
         
@@ -189,6 +200,11 @@ function convertToDBML(dataTypes) {
     
     dbml += `}\n\n`;
   }
+  
+  // Add relationships at the end
+  relationships.forEach(rel => {
+    dbml += rel + '\n';
+  });
   
   return dbml;
 }
