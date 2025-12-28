@@ -37,12 +37,12 @@ app.get('/api/schema/:input', async function(req, res) {
     
     const page = await browser.newPage();
     
-    await page.goto(appUrl, {
-      waitUntil: 'networkidle0',
-      timeout: 30000
-    });
-    
-    await wait(3000);
+await page.goto(appUrl, {
+  waitUntil: 'domcontentloaded',
+  timeout: 90000
+});
+
+await wait(5000);
     
     const schemaData = await page.evaluate(function() {
       if (typeof app === 'undefined' || !app.user_types) {
