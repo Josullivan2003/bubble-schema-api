@@ -72,25 +72,19 @@ const browser = await puppeteer.launch({
     
     if (format === 'mermaid') {
       output = convertToMermaid(dataTypes);
-      contentType = 'text/plain';
+      contentType = 'text/plain; charset=utf-8';
     } else if (format === 'json') {
       output = JSON.stringify(dataTypes, null, 2);
       contentType = 'application/json';
     } else {
       output = convertToDBML(dataTypes);
-      contentType = 'text/plain';
+      contentType = 'text/plain; charset=utf-8';
     }
     
+    // Ensure proper line breaks
     res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'no-cache');
     res.send(output);
-    
-  } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(500).json({ 
-      error: error.message 
-    });
-  }
-});
 
 // Health check
 app.get('/health', (req, res) => {
