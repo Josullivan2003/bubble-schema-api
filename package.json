@@ -1,0 +1,13 @@
+{
+  "name": "bubble-schema-api",
+  "version": "1.0.0",
+  "description": "API to extract Bubble app schemas",
+  "main": "api-server.js",
+  "scripts": {
+    "start": "node api-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^21.0.0"
+  }
+}
