@@ -115,6 +115,12 @@ function cleanFieldName(fieldName, fieldType) {
     cleanName = cleanName.substring(0, optionIndex);
   }
 
+  // Remove _custom and everything after it
+  var customIndex = cleanName.indexOf('_custom');
+  if (customIndex !== -1) {
+    cleanName = cleanName.substring(0, customIndex);
+  }
+
   // Remove type suffixes
   var typeSuffixes = {
     'text': '_text',
