@@ -121,6 +121,12 @@ function cleanFieldName(fieldName, fieldType) {
     cleanName = cleanName.substring(0, customIndex);
   }
 
+  // Remove _geographic and everything after it
+  var geographicIndex = cleanName.indexOf('_geographic');
+  if (geographicIndex !== -1) {
+    cleanName = cleanName.substring(0, geographicIndex);
+  }
+
   // Remove type suffixes
   var typeSuffixes = {
     'text': '_text',
