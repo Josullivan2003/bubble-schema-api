@@ -30,7 +30,12 @@ app.get('/api/schema/:input', async (req, res) => {
     // Extract schema
     const browser = await puppeteer.launch({
       headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+        '--disable-web-resources'
+      ]
     });
     
     const page = await browser.newPage();
@@ -40,8 +45,9 @@ app.get('/api/schema/:input', async (req, res) => {
       timeout: 30000
     });
     
-    await wait(3000);
-    
+    // Wait for Bubble app to fully load and initialize
+    await wait(10000);
+
     const schemaData = await page.evaluate(() => {
       if (typeof app === 'undefined' || !app.user_types) {
         return null;
@@ -156,70 +162,96 @@ app.listen(PORT, () => {
   console.log(`📖 API docs: http://localhost:${PORT}`);
 });
 
+// Strip type suffix from field name (e.g., "name_text" -> "name")
+function cleanFieldName(fieldName, fieldType) {
+  if (!fieldType || !fieldName) return fieldName;
+
+  // Map of type suffixes to strip
+  const typeSuffixes = {
+    'text': '_text',
+    'number': '_number',
+    'date': '_date',
+    'boolean': '_boolean',
+    'file': '_file',
+    'image': '_image'
+  };
+
+  const suffix = typeSuffixes[fieldType];
+  if (suffix && fieldName.endsWith(suffix)) {
+    return fieldName.slice(0, -suffix.length);
+  }
+
+  return fieldName;
+}
+
 // Convert to DBML
 function convertToDBML(dataTypes) {
   let dbml = '// Bubble App Database Schema\n\n';
-  
+
   for (const [tableName, tableInfo] of Object.entries(dataTypes)) {
     dbml += `Table ${tableName} {\n`;
     dbml += `  _id text [pk]\n`;
     dbml += `  Created_Date timestamp\n`;
     dbml += `  Modified_Date timestamp\n`;
-    
+
     const fields = tableInfo['%f3'] || {};
-    
+
     for (const [fieldName, fieldInfo] of Object.entries(fields)) {
       if (fieldInfo['%del']) continue;
-      
+
       const fieldType = fieldInfo['%v'];
       if (!fieldType) continue;
-      
+
+      const cleanName = cleanFieldName(fieldName, fieldType);
+
       if (fieldType.startsWith('custom.')) {
         const relatedType = fieldType.replace('custom.', '');
-        dbml += `  ${fieldName} text [ref: > ${relatedType}._id]\n`;
+        dbml += `  ${cleanName} text [ref: > ${relatedType}._id]\n`;
       } else if (fieldType === 'user') {
-        dbml += `  ${fieldName} text [ref: > user._id]\n`;
+        dbml += `  ${cleanName} text [ref: > user._id]\n`;
       } else {
         let dbType = 'text';
         if (fieldType === 'number') dbType = 'numeric';
         else if (fieldType === 'date') dbType = 'timestamp';
         else if (fieldType === 'boolean') dbType = 'boolean';
-        
-        dbml += `  ${fieldName} ${dbType}\n`;
+
+        dbml += `  ${cleanName} ${dbType}\n`;
       }
     }
-    
+
     dbml += `}\n\n`;
   }
-  
+
   return dbml;
 }
 
 // Convert to Mermaid
 function convertToMermaid(dataTypes) {
   let mermaid = 'erDiagram\n';
-  
+
   for (const [tableName, tableInfo] of Object.entries(dataTypes)) {
     mermaid += `  ${tableName} {\n`;
-    
+
     const fields = tableInfo['%f3'] || {};
-    
+
     for (const [fieldName, fieldInfo] of Object.entries(fields)) {
       if (fieldInfo['%del']) continue;
-      
+
       const fieldType = fieldInfo['%v'];
       if (!fieldType) continue;
-      
+
+      const cleanName = cleanFieldName(fieldName, fieldType);
+
       let dbType = 'string';
       if (fieldType === 'number') dbType = 'int';
       else if (fieldType === 'date') dbType = 'date';
       else if (fieldType === 'boolean') dbType = 'bool';
-      
-      mermaid += `    ${dbType} ${fieldName}\n`;
+
+      mermaid += `    ${dbType} ${cleanName}\n`;
     }
-    
+
     mermaid += `  }\n`;
   }
-  
+
   return mermaid;
 }
