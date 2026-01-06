@@ -107,6 +107,15 @@ app.listen(PORT, function() {
 function cleanFieldName(fieldName, fieldType) {
   if (!fieldType || !fieldName) return fieldName;
 
+  var cleanName = fieldName;
+
+  // Remove _option and everything after it
+  var optionIndex = cleanName.indexOf('_option');
+  if (optionIndex !== -1) {
+    cleanName = cleanName.substring(0, optionIndex);
+  }
+
+  // Remove type suffixes
   var typeSuffixes = {
     'text': '_text',
     'number': '_number',
@@ -117,11 +126,11 @@ function cleanFieldName(fieldName, fieldType) {
   };
 
   var suffix = typeSuffixes[fieldType];
-  if (suffix && fieldName.endsWith(suffix)) {
-    return fieldName.slice(0, -suffix.length);
+  if (suffix && cleanName.endsWith(suffix)) {
+    cleanName = cleanName.slice(0, -suffix.length);
   }
 
-  return fieldName;
+  return cleanName;
 }
 
 function convertToDBML(dataTypes) {
