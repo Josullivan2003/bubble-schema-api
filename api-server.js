@@ -39,10 +39,10 @@ app.get('/api/schema/:input', async function(req, res) {
     
 await page.goto(appUrl, {
   waitUntil: 'domcontentloaded',
-  timeout: 90000
+  timeout: 45000
 });
 
-await wait(5000);
+await wait(2000);
     
     const schemaData = await page.evaluate(function() {
       if (typeof app === 'undefined' || !app.user_types) {
