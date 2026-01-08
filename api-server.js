@@ -49,16 +49,14 @@ app.get('/api/schema/:input', async function(req, res) {
     const browser = await getBrowser();
     page = await browser.newPage();
 
-    await page.goto(appUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000
-    });
+    // Start navigation without waiting for page load events
+    page.goto(appUrl).catch(function() {});
 
-    // Wait for app.user_types to be available (max 15s)
+    // Poll for app.user_types (max 60s)
     const schemaData = await page.evaluate(function() {
       return new Promise(function(resolve) {
         var attempts = 0;
-        var maxAttempts = 30;
+        var maxAttempts = 120;
 
         function check() {
           attempts++;
