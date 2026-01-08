@@ -232,7 +232,16 @@ function convertToDBML(dataTypes) {
     dbml = dbml + '}\n\n';
   }
 
-  return dbml;
+  // Remove any Ref: lines at the bottom
+  var lines = dbml.split('\n');
+  var filtered = [];
+  for (var k = 0; k < lines.length; k++) {
+    if (!lines[k].startsWith('Ref:')) {
+      filtered.push(lines[k]);
+    }
+  }
+
+  return filtered.join('\n');
 }
 
 function convertToMermaid(dataTypes) {
