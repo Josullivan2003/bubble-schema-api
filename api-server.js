@@ -50,7 +50,7 @@ app.get('/api/schema/:input', async function(req, res) {
     page = await browser.newPage();
 
     await page.goto(appUrl, {
-      waitUntil: 'commit',
+      waitUntil: 'domcontentloaded',
       timeout: 30000
     });
 
