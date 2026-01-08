@@ -5,6 +5,23 @@ const chromium = require('@sparticuz/chromium');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+let browser = null;
+
+async function getBrowser() {
+  if (!browser || !browser.isConnected()) {
+    console.log('Launching browser...');
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true
+    });
+    console.log('Browser ready');
+  }
+  return browser;
+}
+
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -12,9 +29,11 @@ function wait(ms) {
 app.get('/api/schema/:input', async function(req, res) {
   const input = req.params.input;
   const format = req.query.format || 'dbml';
-  
+
   console.log('Request: ' + input + ' (format: ' + format + ')');
-  
+
+  let page = null;
+
   try {
     let appUrl;
     if (input.startsWith('http')) {
@@ -24,34 +43,28 @@ app.get('/api/schema/:input', async function(req, res) {
     } else {
       appUrl = 'https://' + input + '.bubbleapps.io';
     }
-    
-    console.log('Visiting: ' + appUrl);
-    
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true
-    });
-    
-    const page = await browser.newPage();
-    
-await page.goto(appUrl, {
-  waitUntil: 'domcontentloaded',
-  timeout: 45000
-});
 
-await wait(2000);
-    
+    console.log('Visiting: ' + appUrl);
+
+    const browser = await getBrowser();
+    page = await browser.newPage();
+
+    await page.goto(appUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000
+    });
+
+    await wait(2000);
+
     const schemaData = await page.evaluate(function() {
       if (typeof app === 'undefined' || !app.user_types) {
         return null;
       }
       return JSON.stringify(app.user_types);
     });
-    
-    await browser.close();
+
+    await page.close();
+    page = null;
     
     if (!schemaData) {
       return res.status(404).json({ 
@@ -84,9 +97,13 @@ await wait(2000);
     
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ 
-      error: error.message 
+    res.status(500).json({
+      error: error.message
     });
+  } finally {
+    if (page) {
+      await page.close().catch(() => {});
+    }
   }
 });
 
@@ -98,9 +115,18 @@ app.get('/', function(req, res) {
   res.send('<html><head><title>Bubble Schema API</title></head><body><h1>Bubble Schema Extractor API</h1><p>Extract database schemas from Bubble apps</p><h2>Endpoints</h2><h3>GET /api/schema/:appName</h3><p>Extract schema from a Bubble app</p><h4>Parameters:</h4><ul><li>appName - Bubble app name or full URL</li><li>format (query) - Output format: dbml, mermaid, or json</li></ul><h4>Examples:</h4><pre>GET /api/schema/postcard</pre><pre>GET /api/schema/postcard?format=dbml</pre><pre>GET /api/schema/postcard?format=mermaid</pre><pre>GET /api/schema/postcard?format=json</pre></body></html>');
 });
 
-app.listen(PORT, function() {
-  console.log('API running on port ' + PORT);
-  console.log('http://localhost:' + PORT);
+async function start() {
+  console.log('Pre-warming Chromium...');
+  await getBrowser();
+
+  app.listen(PORT, function() {
+    console.log('API running on port ' + PORT);
+  });
+}
+
+start().catch(function(err) {
+  console.error('Failed to start:', err);
+  process.exit(1);
 });
 
 // Strip type suffix from field name (e.g., "name_text" -> "name")
