@@ -49,29 +49,21 @@ app.get('/api/schema/:input', async function(req, res) {
     const browser = await getBrowser();
     page = await browser.newPage();
 
-    // Start navigation without waiting for page load events
+    // Navigate and wait for app.user_types to exist (max 55s)
     page.goto(appUrl).catch(function() {});
 
-    // Poll for app.user_types (max 60s)
-    const schemaData = await page.evaluate(function() {
-      return new Promise(function(resolve) {
-        var attempts = 0;
-        var maxAttempts = 120;
-
-        function check() {
-          attempts++;
-          if (typeof app !== 'undefined' && app.user_types) {
-            resolve(JSON.stringify(app.user_types));
-          } else if (attempts >= maxAttempts) {
-            resolve(null);
-          } else {
-            setTimeout(check, 500);
-          }
-        }
-
-        check();
+    let schemaData = null;
+    try {
+      await page.waitForFunction(
+        function() { return typeof app !== 'undefined' && app.user_types; },
+        { timeout: 55000 }
+      );
+      schemaData = await page.evaluate(function() {
+        return JSON.stringify(app.user_types);
       });
-    });
+    } catch (e) {
+      // Timeout waiting for app.user_types - schema not found
+    }
 
     await page.close();
     page = null;
