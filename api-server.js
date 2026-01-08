@@ -232,11 +232,12 @@ function convertToDBML(dataTypes) {
     dbml = dbml + '}\n\n';
   }
 
-  // Remove any Ref: lines at the bottom
+  // Remove any Ref: lines
   var lines = dbml.split('\n');
   var filtered = [];
   for (var k = 0; k < lines.length; k++) {
-    if (!lines[k].startsWith('Ref:')) {
+    var trimmed = lines[k].trim();
+    if (!trimmed.startsWith('Ref:') && !trimmed.startsWith('Ref ')) {
       filtered.push(lines[k]);
     }
   }
