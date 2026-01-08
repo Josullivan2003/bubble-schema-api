@@ -50,17 +50,29 @@ app.get('/api/schema/:input', async function(req, res) {
     page = await browser.newPage();
 
     await page.goto(appUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 45000
+      waitUntil: 'commit',
+      timeout: 30000
     });
 
-    await wait(2000);
-
+    // Wait for app.user_types to be available (max 15s)
     const schemaData = await page.evaluate(function() {
-      if (typeof app === 'undefined' || !app.user_types) {
-        return null;
-      }
-      return JSON.stringify(app.user_types);
+      return new Promise(function(resolve) {
+        var attempts = 0;
+        var maxAttempts = 30;
+
+        function check() {
+          attempts++;
+          if (typeof app !== 'undefined' && app.user_types) {
+            resolve(JSON.stringify(app.user_types));
+          } else if (attempts >= maxAttempts) {
+            resolve(null);
+          } else {
+            setTimeout(check, 500);
+          }
+        }
+
+        check();
+      });
     });
 
     await page.close();
